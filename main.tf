@@ -1,6 +1,5 @@
 locals {
   prefix = "mi"
-  skus   = ["Basic", "Standard", "Premium"]
 }
 
 module "regions" {
@@ -34,25 +33,20 @@ resource "azurerm_user_assigned_identity" "servicebus" {
 module "servicebus" {
   source   = "Azure/avm-res-servicebus-namespace/azurerm"
   version = "0.4.0"
-  
-  for_each = toset(local.skus)
 
   location            = azurerm_resource_group.servicebus.location
-  name                = "${module.naming.servicebus_namespace.name_unique}-${each.value}-${local.prefix}"
+  name                = "${module.naming.servicebus_namespace.name_unique}-${local.prefix}"
   resource_group_name = azurerm_resource_group.servicebus.name
   managed_identities = {
     system_assigned            = true
     user_assigned_resource_ids = [azurerm_user_assigned_identity.servicebus.id]
   }
-  sku = each.value
+  sku = var.sku
 }
 
-# Service Bus Queue (only for Standard and Premium SKUs)
 resource "azurerm_servicebus_queue" "example" {
-  for_each = toset([for sku in local.skus : sku if sku != "Basic"])
-
   name         = "keda-queue"
-  namespace_id = module.servicebus[each.value].resource_id
+  namespace_id = module.servicebus.resource_id
 
   # Optional: Configure queue properties
   default_message_ttl = "P1D"  # 1 day
